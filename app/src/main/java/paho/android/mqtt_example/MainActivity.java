@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.support.design.widget.TextInputEditText;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -23,11 +22,16 @@ import java.io.IOException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -114,6 +118,44 @@ public class MainActivity extends AppCompatActivity {
         btnPublish.setEnabled(connected);
     }
 
+    private javax.net.ssl.SSLSocketFactory createTrustAllSSLSocketFactory() {
+        try {
+            SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
+            sslContext.init(null, new TrustManager[]{new X509TrustManager() {
+                @Override
+                public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType)
+                        throws CertificateException {
+                }
+
+                @Override
+                public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType)
+                        throws CertificateException {
+                }
+
+                @Override
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                    return new java.security.cert.X509Certificate[0];
+                }
+            }}, new SecureRandom());
+            return sslContext.getSocketFactory();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create SSL socket factory", e);
+            return null;
+        }
+    }
+
+    private javax.net.ssl.SSLSocketFactory createCustomSSLSocketFactory(Context context) {
+        try {
+            SocketFactory.SocketFactoryOptions socketFactoryOptions = new SocketFactory.SocketFactoryOptions();
+            socketFactoryOptions.withCaInputStream(
+                    context.getResources().openRawResource(paho.android.mqtt_example.R.raw.mosquitto_org));
+            return new SocketFactory(socketFactoryOptions);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create custom SSL socket factory", e);
+            return null;
+        }
+    }
+
     private void connect() {
         String broker = editBroker.getText().toString().trim();
         if (broker.isEmpty()) {
@@ -148,14 +190,18 @@ public class MainActivity extends AppCompatActivity {
             mqttOptions.setConnectionTimeout(30);
 
             if (broker.contains("ssl") || broker.contains("wss")) {
-                try {
-                    SocketFactory.SocketFactoryOptions socketFactoryOptions = new SocketFactory.SocketFactoryOptions();
-                    socketFactoryOptions.withCaInputStream(getResources().openRawResource(paho.android.mqtt_example.R.raw.mosquitto_org));
-                    mqttOptions.setSocketFactory(new SocketFactory(socketFactoryOptions));
-                    log("SSL/WSS socket factory configured");
-                } catch (IOException | NoSuchAlgorithmException | KeyStoreException | CertificateException | KeyManagementException | UnrecoverableKeyException e) {
-                    log("SSL configuration error: " + e.getMessage());
-                    e.printStackTrace();
+                if (broker.contains("test.mosquitto.org") || broker.contains("mosquitto.org")) {
+                    javax.net.ssl.SSLSocketFactory sslFactory = createCustomSSLSocketFactory(this);
+                    if (sslFactory != null) {
+                        mqttOptions.setSocketFactory(sslFactory);
+                        log("Using custom certificate (Mosquitto test server)");
+                    }
+                } else {
+                    javax.net.ssl.SSLSocketFactory sslFactory = createTrustAllSSLSocketFactory();
+                    if (sslFactory != null) {
+                        mqttOptions.setSocketFactory(sslFactory);
+                        log("Using trust-all SSL factory (for testing)");
+                    }
                 }
             }
 
