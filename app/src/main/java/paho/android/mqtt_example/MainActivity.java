@@ -94,6 +94,24 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, message);
     }
 
+    private void logException(String prefix, Throwable t) {
+        if (t == null) {
+            log(prefix + ": null");
+            return;
+        }
+        String msg = prefix + ": " + t.getClass().getSimpleName();
+        if (t.getMessage() != null) {
+            msg += " - " + t.getMessage();
+        }
+        log(msg);
+        
+        Log.e(TAG, prefix, t);
+        
+        if (t.getCause() != null) {
+            logException("Caused by", t.getCause());
+        }
+    }
+
     private void updateStatus(String status, int color) {
         txtStatus.setText(status);
         txtStatus.setTextColor(color);
@@ -118,12 +136,14 @@ public class MainActivity extends AppCompatActivity {
         if (clientId.isEmpty()) {
             clientId = MqttClient.generateClientId();
         }
+        log("Client ID: " + clientId);
 
         String username = editUsername.getText().toString().trim();
         String password = editPassword.getText().toString();
 
         updateStatus("Connecting...", 0xFFFF9800);
         log("Connecting to: " + broker);
+        log("Using system default SSL trust (for CA-signed certificates)");
 
         try {
             client = new MqttAndroidClient(getBaseContext(), broker, clientId);
@@ -131,24 +151,22 @@ public class MainActivity extends AppCompatActivity {
 
             if (!username.isEmpty()) {
                 mqttOptions.setUserName(username);
+                log("Username set: " + username);
             }
             if (!password.isEmpty()) {
                 mqttOptions.setPassword(password.toCharArray());
+                log("Password set");
             }
 
             mqttOptions.setCleanSession(true);
             mqttOptions.setKeepAliveInterval(60);
             mqttOptions.setConnectionTimeout(30);
 
-            if (broker.contains("ssl") || broker.contains("wss")) {
-                log("Using system default SSL trust (for CA-signed certificates)");
-            }
-
             client.setCallback(new MqttCallback() {
                 @Override
                 public void connectionLost(Throwable cause) {
                     runOnUiThread(() -> {
-                        log("Connection lost: " + (cause != null ? cause.getMessage() : "unknown"));
+                        logException("Connection lost", cause);
                         updateStatus("Disconnected", 0xFFFF5722);
                         updateConnectionState(false);
                     });
@@ -183,7 +201,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     runOnUiThread(() -> {
-                        log("Connection failed: " + (exception != null ? exception.getMessage() : "unknown"));
+                        logException("Connection failed", exception);
                         updateStatus("Connection Failed", 0xFFFF5722);
                         updateConnectionState(false);
                     });
@@ -191,9 +209,8 @@ public class MainActivity extends AppCompatActivity {
             });
 
         } catch (MqttException e) {
-            log("MqttException: " + e.getMessage());
+            logException("MqttException", e);
             updateStatus("Connection Failed", 0xFFFF5722);
-            e.printStackTrace();
         }
     }
 
@@ -214,13 +231,12 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                         runOnUiThread(() -> {
-                            log("Disconnect failed: " + (exception != null ? exception.getMessage() : "unknown"));
+                            logException("Disconnect failed", exception);
                         });
                     }
                 });
             } catch (MqttException e) {
-                log("Disconnect error: " + e.getMessage());
-                e.printStackTrace();
+                logException("Disconnect error", e);
             }
         } else {
             log("Not connected");
@@ -252,13 +268,12 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     runOnUiThread(() -> {
-                        log("Subscribe failed: " + (exception != null ? exception.getMessage() : "unknown"));
+                        logException("Subscribe failed", exception);
                     });
                 }
             });
         } catch (MqttException e) {
-            log("Subscribe error: " + e.getMessage());
-            e.printStackTrace();
+            logException("Subscribe error", e);
         }
     }
 
@@ -297,13 +312,12 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
                     runOnUiThread(() -> {
-                        log("Publish failed: " + (exception != null ? exception.getMessage() : "unknown"));
+                        logException("Publish failed", exception);
                     });
                 }
             });
         } catch (MqttException e) {
-            log("Publish error: " + e.getMessage());
-            e.printStackTrace();
+            logException("Publish error", e);
         }
     }
 
