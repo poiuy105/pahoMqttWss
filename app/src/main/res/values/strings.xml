@@ -1,3 +1,25 @@
 <resources>
-    <string name="app_name">Paho MQTT Client Example</string>
+    <string name="app_name">Paho MQTT Client</string>
+    <string name="server_config">Server Configuration</string>
+    <string name="broker_url">Broker URL</string>
+    <string name="broker_url_hint">e.g., wss://broker.example.com:443</string>
+    <string name="client_id">Client ID</string>
+    <string name="client_id_hint">Auto-generated if empty</string>
+    <string name="username">Username (Optional)</string>
+    <string name="password">Password (Optional)</string>
+    <string name="topic">Subscribe Topic</string>
+    <string name="topic_hint">e.g., test/#</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="subscribe">Subscribe</string>
+    <string name="publish">Publish</string>
+    <string name="publish_topic">Publish Topic</string>
+    <string name="publish_message">Message</string>
+    <string name="connection_status">Status</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="connecting">Connecting...</string>
+    <string name="connected">Connected</string>
+    <string name="connection_failed">Connection Failed</string>
+    <string name="log_area">Log Messages</string>
+    <string name="clear_log">Clear Log</string>
 </resources>
